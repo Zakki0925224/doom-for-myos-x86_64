@@ -1,10 +1,3 @@
-################################################################
-#
-# $Id:$
-#
-# $Log:$
-#
-
 ifeq ($(V),1)
 	VB=''
 else
@@ -12,22 +5,49 @@ else
 endif
 
 LIBCDIR := ../../apps/libc
-SFDIR := ./berkley-softfloat-3
-LIB := $(LIBCDIR)/libc_with_main.a -L$(SFDIR)/build/Linux-x86_64-GCC $(SFDIR)/build/Linux-x86_64-GCC/softfloat.a
+SFDIR := ../../third-party/doom-for-myos/berkley-softfloat-3
+DOOMDIR := ../../third-party/doom-for-myos
+LIBC_A := $(LIBCDIR)/libc_with_main.a
+SOFTFLOAT_A := $(SFDIR)/build/Linux-x86_64-GCC/softfloat.a
 
-CC=gcc  # gcc or g++
+LIB := $(LIBC_A) -L$(SFDIR)/build/Linux-x86_64-GCC $(SOFTFLOAT_A)
+
+CC=gcc
 LD=ld.lld
 CFLAGS=-I $(LIBCDIR) -I $(SFDIR)/source/include -O2 -Wall -g -m64 -nostdlib -fno-builtin -fno-stack-protector -mcmodel=large -mno-mmx -mno-sse -msoft-float -std=c11 -DARCH_MYOS
 LDFLAGS=-z norelro --static --image-base=0xffff800000000000
 
-# subdirectory for objects
 OBJDIR=build
-OUTPUT=doomgeneric
+
+OUTPUT=../../apps/bin/doom
 
 SRC_DOOM = dummy.o am_map.o doomdef.o doomstat.o dstrings.o d_event.o d_items.o d_iwad.o d_loop.o d_main.o d_mode.o d_net.o f_finale.o f_wipe.o g_game.o hu_lib.o hu_stuff.o info.o i_cdmus.o i_endoom.o i_joystick.o i_scale.o i_sound.o i_system.o i_timer.o memio.o m_argv.o m_bbox.o m_cheat.o m_config.o m_controls.o m_fixed.o m_menu.o m_misc.o m_random.o p_ceilng.o p_doors.o p_enemy.o p_floor.o p_inter.o p_lights.o p_map.o p_maputl.o p_mobj.o p_plats.o p_pspr.o p_saveg.o p_setup.o p_sight.o p_spec.o p_switch.o p_telept.o p_tick.o p_user.o r_bsp.o r_data.o r_draw.o r_main.o r_plane.o r_segs.o r_sky.o r_things.o sha1.o sounds.o statdump.o st_lib.o st_stuff.o s_sound.o tables.o v_video.o wi_stuff.o w_checksum.o w_file.o w_main.o w_wad.o z_zone.o w_file_stdc.o i_input.o i_video.o doomgeneric.o doomgeneric_myos.o
 OBJS += $(addprefix $(OBJDIR)/, $(SRC_DOOM))
 
-all:	 $(OUTPUT)
+all: $(OUTPUT)
+	@echo Doom build is complete. Output: $(OUTPUT)
+
+$(OUTPUT): $(OBJS) $(LIBC_A) $(SOFTFLOAT_A)
+	@echo [Linking $@]
+	mkdir -p $(@D)
+	$(VB)$(LD) $(OBJS) $(LIB) -o $@ $(LDFLAGS) --Map=$(OUTPUT).map
+	@echo [Size]
+	-$(CROSS_COMPILE)size $(OUTPUT)
+
+$(LIBC_A):
+	$(MAKE) -C $(LIBCDIR) app
+
+$(SOFTFLOAT_A):
+	$(MAKE) -C $(SFDIR)/build/Linux-x86_64-GCC
+
+$(OBJS): | $(OBJDIR)
+
+$(OBJDIR):
+	mkdir -p $(OBJDIR)
+
+$(OBJDIR)/%.o: $(DOOMDIR)/%.c
+	@echo [Compiling $<]
+	$(VB)$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
 	rm -rf $(OBJDIR)
@@ -36,23 +56,7 @@ clean:
 	rm -f $(OUTPUT).map
 	make -C $(SFDIR)/build/Linux-x86_64-GCC clean
 
-$(OUTPUT):	$(OBJS)
-	@echo [Linking $@]
-	make -C $(LIBCDIR) app
-	make -C $(SFDIR)/build/Linux-x86_64-GCC
-	$(VB)$(LD) $(OBJS) $(LIB) -o $@ $(LDFLAGS) --Map=$(OUTPUT).map
-	@echo [Size]
-	-$(CROSS_COMPILE)size $(OUTPUT)
-
-$(OBJS): | $(OBJDIR)
-
-$(OBJDIR):
-	mkdir -p $(OBJDIR)
-
-$(OBJDIR)/%.o:	%.c
-	@echo [Compiling $<]
-	$(VB)$(CC) $(CFLAGS) -c $< -o $@
-
 print:
 	@echo OBJS: $(OBJS)
 
+.PHONY: all clean print

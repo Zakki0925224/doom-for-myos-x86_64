@@ -7,7 +7,7 @@
 #include "doomkeys.h"
 
 static uint32_t init_ticks_ms = 0;
-static component_descriptor *cdesc = NULL;
+static component_descriptor* cdesc = NULL;
 static char before_input_key = '\0';
 static char input_key;
 
@@ -63,13 +63,20 @@ void DG_Init() {
         return;
     }
 
-    if (create_component_image(cdesc, DOOMGENERIC_RESX, DOOMGENERIC_RESY, PIXEL_FORMAT_BGRA, (char *)DG_ScreenBuffer) == NULL) {
+    if (create_component_image(cdesc, DOOMGENERIC_RESX, DOOMGENERIC_RESY, PIXEL_FORMAT_BGRA, (char*)DG_ScreenBuffer) == NULL) {
         printf("Failed to add image to window\n");
         return;
     }
 }
 
 void DG_DrawFrame() {
+    f_stat stat;
+    if (sys_stat(0, &stat) == -1)  // 0 is stdin
+        return;
+
+    if (stat.size == 0)
+        return;
+
     char input_key = getchar();
     if (input_key == EOF)
         return;
@@ -101,7 +108,7 @@ uint32_t DG_GetTicksMs() {
     return (uint32_t)sys_uptime() - init_ticks_ms;
 }
 
-int DG_GetKey(int *pressed, unsigned char *doomKey) {
+int DG_GetKey(int* pressed, unsigned char* doomKey) {
     if (s_KeyQueueReadIndex == s_KeyQueueWriteIndex)
         return 0;
 
@@ -115,10 +122,10 @@ int DG_GetKey(int *pressed, unsigned char *doomKey) {
     return 1;
 }
 
-void DG_SetWindowTitle(const char *title) {
+void DG_SetWindowTitle(const char* title) {
 }
 
-int main(int argc, char **argv) {
+int main(int argc, char** argv) {
     doomgeneric_Create(argc, argv);
 
     while (1)
